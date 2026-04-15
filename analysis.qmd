@@ -1,0 +1,61 @@
+---
+title: "analysis"
+author: "Aiden Harig"
+format:
+  html:
+    embed-resources: true
+---
+
+```{r}
+# DATA IMPORT AND WRANGLING
+
+
+
+
+## VERIS Community Database (VCDB)
+
+
+library(readr)
+vcdb <- read_csv("data/vcdb.csv")
+
+
+library(tidyverse)
+vcdb %>%
+    dplyr::group_by(attribute.confidentiality.data_disclosure.Yes) %>%
+    dplyr::count(timeline.incident.year) %>%
+    dplyr::ungroup() %>%
+    dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) %>%
+    dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) %>%
+  ggplot2::ggplot() + 
+    ggplot2::geom_bar(ggplot2::aes(x=timeline.incident.year, y=n, group=breach, fill=breach), stat="identity") + 
+    ggplot2::labs(title="VCDB Breaches and Incidents by Incident Year", x="Count", y="Year") +
+    ggplot2::scale_x_continuous(expand=c(0,0), limits=c(2003, 2018)) +
+    ggplot2::scale_y_continuous(expand=c(0,0)) +
+    ggplot2::scale_fill_brewer() +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+        panel.grid.major.x = ggplot2::element_blank(),
+        panel.grid.minor.x = ggplot2::element_blank(),
+        panel.grid.minor.y = ggplot2::element_blank()
+    )
+
+# install devtools from https://github.com/hadley/devtools
+devtools::install_github("vz-risk/verisr")
+library(RCurl)
+vcdb %>%
+    verisr::getenumCI("action", by="asset.variety") %>%
+    dplyr::filter(!is.na(n)) %>%
+    dplyr::mutate(by = stringr::str_sub(by, 15)) %>%
+  ggplot2::ggplot() +
+    ggplot2::geom_tile(ggplot2::aes(x=enum, y=by, fill=x)) +
+    ggplot2::geom_text(ggplot2::aes(x=enum, y=by, label=x)) +
+    ggplot2::scale_fill_gradient2() +
+    ggplot2::theme_void() +
+    ggplot2::theme(
+        axis.text = ggplot2::element_text(),
+        axis.text.x = ggplot2::element_text(hjust=1, angle=90)
+    )
+
+
+```
+
