@@ -14,30 +14,78 @@ format:
 
 ## VERIS Community Database (VCDB)
 
-
+library(tidyverse)
 library(readr)
 vcdb <- read_csv("data/vcdb.csv")
 
 
-library(tidyverse)
-vcdb %>%
-    dplyr::group_by(attribute.confidentiality.data_disclosure.Yes) %>%
-    dplyr::count(timeline.incident.year) %>%
-    dplyr::ungroup() %>%
-    dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) %>%
-    dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) %>%
+#------------------------------------------------------------------
+## ALL INDUSTRIES (N_BREACH)
+
+vcdb_all <- vcdb |>
+  dplyr::group_by(attribute.confidentiality.data_disclosure.Yes, victim.industry.name) |>
+  dplyr::count(timeline.incident.year) |>
+  dplyr::ungroup() |>
+  dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) |>
+  dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) |>
+  dplyr::group_by(victim.industry.name) |>
+  dplyr::mutate(n_total = sum(n)) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(victim.industry.name = fct_reorder(victim.industry.name, n_total)) |>
+  dplyr::arrange(desc(n)) |>
   ggplot2::ggplot() + 
-    ggplot2::geom_bar(ggplot2::aes(x=timeline.incident.year, y=n, group=breach, fill=breach), stat="identity") + 
-    ggplot2::labs(title="VCDB Breaches and Incidents by Incident Year", x="Count", y="Year") +
-    ggplot2::scale_x_continuous(expand=c(0,0), limits=c(2003, 2018)) +
-    ggplot2::scale_y_continuous(expand=c(0,0)) +
-    ggplot2::scale_fill_brewer() +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
+  ggplot2::geom_bar(ggplot2::aes(x=victim.industry.name, y=n, group=breach, fill=breach), stat="identity") + 
+  ggplot2::labs(title="VCDB Breaches and Incidents by Industry", x="Industry", y="Count") +
+  ggplot2::scale_fill_brewer() +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
         panel.grid.major.x = ggplot2::element_blank(),
         panel.grid.minor.x = ggplot2::element_blank(),
-        panel.grid.minor.y = ggplot2::element_blank()
+        panel.grid.minor.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
     )
+vcdb_all
+
+
+#------------------------------------------------------------------
+## TOP 5 INDUSTRIES (N_BREACH)
+
+industry_totals <- vcdb |>
+  dplyr::count(victim.industry.name, name = "n_total") |>
+  dplyr::arrange(desc(n_total))
+
+top5 <- industry_totals |>
+  dplyr::slice(1:5) |>
+  dplyr::pull(victim.industry.name)
+
+vcdb_top5 <- vcdb |>
+  dplyr::filter(victim.industry.name %in% top5) |>
+  dplyr::group_by(attribute.confidentiality.data_disclosure.Yes, victim.industry.name) |>
+  dplyr::count(timeline.incident.year) |>
+  dplyr::ungroup() |>
+  dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) |>
+  dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) |>
+  dplyr::group_by(victim.industry.name) |>
+  dplyr::mutate(n_total = sum(n)) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(victim.industry.name = fct_reorder(victim.industry.name, n_total)) |>
+  dplyr::arrange(desc(n_total)) |>
+  ggplot2::ggplot() + 
+  ggplot2::geom_bar(ggplot2::aes(x=victim.industry.name, y=n, group=breach, fill=breach), stat="identity") + 
+  ggplot2::labs(title="VCDB Breaches and Incidents by Industry", x="Industry", y="Count") +
+  ggplot2::scale_fill_brewer() +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+        panel.grid.major.x = ggplot2::element_blank(),
+        panel.grid.minor.x = ggplot2::element_blank(),
+        panel.grid.minor.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+    )
+vcdb_top5
+
+
+#------------------------------------------------------------------
+## HEATMAP
 
 # install devtools from https://github.com/hadley/devtools
 devtools::install_github("vz-risk/verisr")
