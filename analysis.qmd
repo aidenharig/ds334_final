@@ -7,9 +7,7 @@ format:
 ---
 
 ```{r}
-# DATA IMPORT AND WRANGLING
-
-
+# DATA IMPORT
 
 
 ## VERIS Community Database (VCDB)
@@ -19,7 +17,14 @@ library(readr)
 vcdb <- read_csv("data/vcdb.csv")
 
 
-#------------------------------------------------------------------
+```
+
+
+
+```{r}
+## SECTION 1: GRAPHING BREACH AND INCIDENT BY SECTOR
+
+
 ## ALL INDUSTRIES (N_BREACH)
 
 vcdb_all <- vcdb |>
@@ -85,24 +90,39 @@ vcdb_top5
 
 
 #------------------------------------------------------------------
-## HEATMAP
+## CONFIRMED BREACHES OVER TIME BY SECTOR
 
-# install devtools from https://github.com/hadley/devtools
-devtools::install_github("vz-risk/verisr")
-library(RCurl)
-vcdb %>%
-    verisr::getenumCI("action", by="asset.variety") %>%
-    dplyr::filter(!is.na(n)) %>%
-    dplyr::mutate(by = stringr::str_sub(by, 15)) %>%
-  ggplot2::ggplot() +
-    ggplot2::geom_tile(ggplot2::aes(x=enum, y=by, fill=x)) +
-    ggplot2::geom_text(ggplot2::aes(x=enum, y=by, label=x)) +
-    ggplot2::scale_fill_gradient2() +
-    ggplot2::theme_void() +
-    ggplot2::theme(
-        axis.text = ggplot2::element_text(),
-        axis.text.x = ggplot2::element_text(hjust=1, angle=90)
+vcdb_overTime <- vcdb |>
+  dplyr::group_by(attribute.confidentiality.data_disclosure.Yes, victim.industry.name) |>
+  dplyr::count(timeline.incident.year) |>
+  dplyr::ungroup() |>
+  dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) |>
+  dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) |>
+  dplyr::group_by(victim.industry.name, timeline.incident.year) |>
+  dplyr::mutate(n_total = sum(n)) |>
+  dplyr::ungroup() |>
+  ggplot2::ggplot() + 
+  ggplot2::geom_line(ggplot2::aes(x=timeline.incident.year, y=n_total, group=victim.industry.name, color=victim.industry.name), stat="identity") + 
+  ggplot2::labs(title="VCDB Breaches and Incidents by Industry", x="Industry", y="Count") +
+  ggplot2::scale_x_continuous(expand=c(0,0), limits=c(2010, 2025)) +
+  ggplot2::scale_fill_brewer() +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+        panel.grid.major.x = ggplot2::element_blank(),
+        panel.grid.minor.x = ggplot2::element_blank(),
+        panel.grid.minor.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
     )
+vcdb_overTime
+
+
+```
+
+
+
+```{r}
+
+
 
 
 ```
