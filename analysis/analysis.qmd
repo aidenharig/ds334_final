@@ -17,7 +17,7 @@ format:
 # LOAD PACKAGES AND DATASET
 library(tidyverse)
 
-vcdb <- read_csv("data/vcdb.csv")
+vcdb <- read_csv("../data/vcdb.csv")
 ```
 
 # Abstract
