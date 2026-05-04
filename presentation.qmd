@@ -1,0 +1,141 @@
+---
+title: "DS334 Final Project -- Flying Under the Radar"
+author: "Aiden Harig"
+format:
+  revealjs:
+    incremental: true
+embed-resources: true
+---
+
+```{r}
+library(tidyverse)
+library(readr)
+
+vcdb <- read_csv("data/vcdb.csv")
+```
+
+## The Data
+
+::: {.incremental}
+- Dataset: **VERIS Community Database (VCDB)**
+- Tracks cybersecurity **breaches and incidents** across industries
+- Records span **1971 to 2025**, with the majority of records concentrated after 2010
+:::
+
+## The Key Variable
+
+::: {.incremental}
+- Key variable: `attribute.confidentiality.data_disclosure.Yes`
+  - `TRUE` → confirmed **Breach** (data was confirmed disclosed/exfiltrated)
+  - `FALSE` → **Incident** (something occurred, but no confirmed data disclosure)
+:::
+
+
+## Questions of Interest
+
+::: {.incremental}
+- Which industries appear **most frequently** in the VCDB, and which are notably absent?
+- Do industries with **mandatory reporting laws** (e.g., Healthcare via HIPAA,
+  Finance via GLBA) account for the majority of reported incidents — and what does
+  that mean for the industries that **don't**?
+- Are low-reporting industries like Agriculture, Utilities, and Manufacturing
+  actually **underreported targets** rather than safe ones — and what does the
+  CrowdStrike data suggest about who is *actually* being attacked?
+:::
+
+
+## All Industries: Breaches & Incidents
+
+```{r}
+#| fig-width: 10
+#| fig-height: 5
+
+vcdb |>
+  dplyr::group_by(attribute.confidentiality.data_disclosure.Yes, victim.industry.name) |>
+  dplyr::count(timeline.incident.year) |>
+  dplyr::ungroup() |>
+  dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) |>
+  dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) |>
+  dplyr::group_by(victim.industry.name) |>
+  dplyr::mutate(n_total = sum(n)) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(victim.industry.name = fct_reorder(victim.industry.name, n_total)) |>
+  dplyr::arrange(desc(n)) |>
+  ggplot2::ggplot() +
+  ggplot2::geom_bar(ggplot2::aes(x = victim.industry.name, y = n, group = breach, fill = breach), stat = "identity") +
+  ggplot2::labs(title = "VCDB Breaches and Incidents by Industry", x = "Industry", y = "Count") +
+  ggplot2::scale_fill_brewer() +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.major.x = ggplot2::element_blank(),
+    panel.grid.minor.x = ggplot2::element_blank(),
+    panel.grid.minor.y = ggplot2::element_blank(),
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+  )
+```
+
+
+## Top 5 Industries: Breaches & Incidents
+
+```{r}
+#| fig-width: 9
+#| fig-height: 5
+
+top5 <- vcdb |>
+  dplyr::count(victim.industry.name, name = "n_total") |>
+  dplyr::arrange(desc(n_total)) |>
+  dplyr::slice(1:5) |>
+  dplyr::pull(victim.industry.name)
+
+vcdb |>
+  dplyr::filter(victim.industry.name %in% top5) |>
+  dplyr::group_by(attribute.confidentiality.data_disclosure.Yes, victim.industry.name) |>
+  dplyr::count(timeline.incident.year) |>
+  dplyr::ungroup() |>
+  dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) |>
+  dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) |>
+  dplyr::group_by(victim.industry.name) |>
+  dplyr::mutate(n_total = sum(n)) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(victim.industry.name = fct_reorder(victim.industry.name, n_total)) |>
+  dplyr::arrange(desc(n_total)) |>
+  ggplot2::ggplot() +
+  ggplot2::geom_bar(ggplot2::aes(x = victim.industry.name, y = n, group = breach, fill = breach), stat = "identity") +
+  ggplot2::labs(title = "VCDB Breaches and Incidents by Industry (Top 5)", x = "Industry", y = "Count") +
+  ggplot2::scale_fill_brewer() +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.major.x = ggplot2::element_blank(),
+    panel.grid.minor.x = ggplot2::element_blank(),
+    panel.grid.minor.y = ggplot2::element_blank(),
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+  )
+```
+
+## Breaches & Incidents Over Time
+
+```{r}
+#| fig-width: 10
+#| fig-height: 5
+
+vcdb |>
+  dplyr::group_by(attribute.confidentiality.data_disclosure.Yes, victim.industry.name) |>
+  dplyr::count(timeline.incident.year) |>
+  dplyr::ungroup() |>
+  dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) |>
+  dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) |>
+  dplyr::group_by(victim.industry.name, timeline.incident.year) |>
+  dplyr::mutate(n_total = sum(n)) |>
+  dplyr::ungroup() |>
+  ggplot2::ggplot() +
+  ggplot2::geom_line(ggplot2::aes(x = timeline.incident.year, y = n_total, group = victim.industry.name, color = victim.industry.name)) +
+  ggplot2::labs(title = "VCDB Breaches and Incidents Over Time by Industry", x = "Year", y = "Count") +
+  ggplot2::scale_x_continuous(expand = c(0, 0), limits = c(2010, 2025)) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.major.x = ggplot2::element_blank(),
+    panel.grid.minor.x = ggplot2::element_blank(),
+    panel.grid.minor.y = ggplot2::element_blank(),
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+  )
+```

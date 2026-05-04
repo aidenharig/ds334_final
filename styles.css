@@ -1,0 +1,23 @@
+/* Section headings — breathe above */
+h2 {
+  margin-top: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Body text — comfortable line spacing */
+p {
+  line-height: 1.75;
+  margin-bottom: 1.1rem;
+}
+
+/* Figures — space above and below */
+.cell {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Intro paragraph — a little extra top breathing room under subtitle */
+.quarto-title-block + p,
+.quarto-title + p {
+  margin-top: 2rem;
+}

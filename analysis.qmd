@@ -1,129 +1,426 @@
 ---
-title: "analysis"
-author: "Aiden Harig"
+title: "The Dark Figure of Cyber Targeting"
+subtitle: "How reporting law and detection gaps shape what public breach data can and cannot tell us"
+author: "Aiden W. Harig"
+date: "2026-05-04"
+categories: [Cybersecurity, Policy Analysis, Critical Infrastructure]
+toc: true
+execute:
+  warning: false
+  echo: false
 format:
   html:
     embed-resources: true
 ---
 
 ```{r}
-# DATA IMPORT
-
-
-## VERIS Community Database (VCDB)
-
+# LOAD PACKAGES AND DATASET
 library(tidyverse)
-library(readr)
+
 vcdb <- read_csv("data/vcdb.csv")
-
-
 ```
 
+# Abstract
 
+Public cybersecurity breach data is often treated as a window onto where attacks happen. This analysis pushes back on that framing. Using the VERIS Community Database (VCDB), I argue that public breach data does not simply show where cyberattacks occur — it shows where and how incidents are reported and discovered, and who the actors are. The report develops this argument across two related chapters. Chapter 1 examines a *reporting gap*: the industries that dominate VCDB are concentrated in sectors with federal disclosure obligations, while several industries with much lower counts show meaningful shares of nation-state or state-affiliated activity. Chapter 2 examines a *detection gap*: incidents must first be discovered before they can be reported, and externally discovered incidents in this dataset are associated with substantially longer dwell times. Together, the two chapters suggest that low public record volume should not be read as low strategic risk, and that visibility in breach data depends on both legal obligation and detection capacity.
+
+<br>
+
+# Introduction
+
+When a hospital suffers a ransomware attack, federal law requires it to notify patients, regulators, and the public within a defined window. When a grain cooperative suffers the same attack, no equivalent federal obligation exists. That asymmetry is not a minor footnote in U.S. cybersecurity policy — it is a structural feature of how breach information enters the public record, and it has consequences for any analyst working with public breach data.
+
+This report uses the **VERIS Community Database (VCDB)**, a publicly available repository of cybersecurity incidents maintained by the VERIS Community and contributed to by organizations, researchers, and security teams. VCDB applies the Vocabulary for Event Recording and Incident Sharing (VERIS) framework to standardize incident documentation across sectors. The dataset includes **10,586 observations**, each representing a single reported cybersecurity incident.
+
+The primary variables used across this analysis are **victim industry** (`victim.industry.name`), **breach confirmation** (`attribute.confidentiality.data_disclosure.Yes`), **discovery method** (`discovery_method.Internal`, `discovery_method.External`), **actor type** (`actor.External`, `actor.external.variety.*`), and **dwell time**, constructed from `timeline.discovery.value` and its associated unit columns. All industry name values contain trailing whitespace in the raw data; `str_trim()` is applied at the start of every pipeline so that joins and groupings line up correctly. Actor variety subtypes with hyphens or spaces in their column names (e.g., `actor.external.variety.Nation-state`) require backtick quoting in R.
+
+A core caveat is that VCDB is not a complete record of all cybersecurity incidents. It captures incidents that were reported -- voluntarily, publicly, or under legal compulsion. The argument of this report is that this property of the dataset is not just a caveat to mention and move past. It is the central thing the data reveals about itself.
+
+The report unfolds in two chapters. Chapter 1 develops the **reporting gap** -- which industries dominate the public record, how that dominance lines up with federal reporting obligations, and which lower-volume sectors nonetheless show meaningful concentrations of nation-state or state-affiliated activity. Chapter 2 develops a related but distinct **detection gap** -- incidents must be discovered before they can be reported, and externally discovered incidents in VCDB tend to remain active substantially longer than internally discovered ones.
+
+<br><br><br><br>
+
+# Chapter 1: The Reporting Gap
+
+## Which industries dominate the public record?
+
+To establish the baseline, I examine total VCDB record counts across U.S. industries. Industries are ordered by total volume so that the concentration at the top of the chart is immediately visible. Each row represents a single industry's total share of the public record -- not its share of all attacks.
+
+<br>
 
 ```{r}
-## SECTION 1: GRAPHING BREACH AND INCIDENT BY SECTOR
+#| fig-width: 10
+#| fig-height: 5.5
+#| fig-align: center
 
+# VIZ 1 -- TOTAL VCDB RECORDS BY INDUSTRY
 
-## ALL INDUSTRIES (N_BREACH)
-
-vcdb_all <- vcdb |>
-  dplyr::group_by(attribute.confidentiality.data_disclosure.Yes, victim.industry.name) |>
-  dplyr::count(timeline.incident.year) |>
-  dplyr::ungroup() |>
-  dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) |>
-  dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) |>
-  dplyr::group_by(victim.industry.name) |>
-  dplyr::mutate(n_total = sum(n)) |>
-  dplyr::ungroup() |>
-  dplyr::mutate(victim.industry.name = fct_reorder(victim.industry.name, n_total)) |>
-  dplyr::arrange(desc(n)) |>
-  ggplot2::ggplot() + 
-  ggplot2::geom_bar(ggplot2::aes(x=victim.industry.name, y=n, group=breach, fill=breach), stat="identity") + 
-  ggplot2::labs(title="VCDB Breaches and Incidents by Industry", x="Industry", y="Count") +
-  ggplot2::scale_fill_brewer() +
-  ggplot2::theme_minimal() +
-  ggplot2::theme(
-        panel.grid.major.x = ggplot2::element_blank(),
-        panel.grid.minor.x = ggplot2::element_blank(),
-        panel.grid.minor.y = ggplot2::element_blank(),
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
-    )
-vcdb_all
-
-
-#------------------------------------------------------------------
-## TOP 5 INDUSTRIES (N_BREACH)
-
-industry_totals <- vcdb |>
-  dplyr::count(victim.industry.name, name = "n_total") |>
-  dplyr::arrange(desc(n_total))
-
-top5 <- industry_totals |>
-  dplyr::slice(1:5) |>
-  dplyr::pull(victim.industry.name)
-
-vcdb_top5 <- vcdb |>
-  dplyr::filter(victim.industry.name %in% top5) |>
-  dplyr::group_by(attribute.confidentiality.data_disclosure.Yes, victim.industry.name) |>
-  dplyr::count(timeline.incident.year) |>
-  dplyr::ungroup() |>
-  dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) |>
-  dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) |>
-  dplyr::group_by(victim.industry.name) |>
-  dplyr::mutate(n_total = sum(n)) |>
-  dplyr::ungroup() |>
-  dplyr::mutate(victim.industry.name = fct_reorder(victim.industry.name, n_total)) |>
-  dplyr::arrange(desc(n_total)) |>
-  ggplot2::ggplot() + 
-  ggplot2::geom_bar(ggplot2::aes(x=victim.industry.name, y=n, group=breach, fill=breach), stat="identity") + 
-  ggplot2::labs(title="VCDB Breaches and Incidents by Industry", x="Industry", y="Count") +
-  ggplot2::scale_fill_brewer() +
-  ggplot2::theme_minimal() +
-  ggplot2::theme(
-        panel.grid.major.x = ggplot2::element_blank(),
-        panel.grid.minor.x = ggplot2::element_blank(),
-        panel.grid.minor.y = ggplot2::element_blank(),
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
-    )
-vcdb_top5
-
-
-#------------------------------------------------------------------
-## CONFIRMED BREACHES OVER TIME BY SECTOR
-
-vcdb_overTime <- vcdb |>
-  dplyr::group_by(attribute.confidentiality.data_disclosure.Yes, victim.industry.name) |>
-  dplyr::count(timeline.incident.year) |>
-  dplyr::ungroup() |>
-  dplyr::rename(breach = attribute.confidentiality.data_disclosure.Yes) |>
-  dplyr::mutate(breach = ifelse(breach, "Breach", "Incident")) |>
-  dplyr::group_by(victim.industry.name, timeline.incident.year) |>
-  dplyr::mutate(n_total = sum(n)) |>
-  dplyr::ungroup() |>
-  ggplot2::ggplot() + 
-  ggplot2::geom_line(ggplot2::aes(x=timeline.incident.year, y=n_total, group=victim.industry.name, color=victim.industry.name), stat="identity") + 
-  ggplot2::labs(title="VCDB Breaches and Incidents by Industry", x="Industry", y="Count") +
-  ggplot2::scale_x_continuous(expand=c(0,0), limits=c(2010, 2025)) +
-  ggplot2::scale_fill_brewer() +
-  ggplot2::theme_minimal() +
-  ggplot2::theme(
-        panel.grid.major.x = ggplot2::element_blank(),
-        panel.grid.minor.x = ggplot2::element_blank(),
-        panel.grid.minor.y = ggplot2::element_blank(),
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
-    )
-vcdb_overTime
-
-
+vcdb |>
+  filter(!is.na(victim.industry.name),
+         str_trim(victim.industry.name) != "Unknown") |> # [1]
+  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
+         victim.industry.name = recode(victim.industry.name,
+                                       "Accomodation" = "Accommodation")) |>
+  count(victim.industry.name, name = "n") |>
+  mutate(victim.industry.name = fct_reorder(victim.industry.name, n)) |>
+  ggplot(aes(x = victim.industry.name, y = n)) +
+  geom_col(fill = "#278AE6") +
+  coord_flip() +
+  labs(title = "Public Record Visibility Is Concentrated in a Few Industries",
+       subtitle = "Total VCDB records by victim industry",
+       x = NULL,
+       y = "Number of VCDB records",
+       caption = "Source: VCDB") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
+        axis.title = element_text(size = 13),
+        axis.text = element_text(size = 11),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank())
 ```
 
+<br>
 
+> Healthcare, Public sector, Educational, Finance, and Information sit clearly at the top of the public record. Industries like Agriculture, Mining, Construction, Utilities, and Manufacturing contribute very little by comparison, despite being significant pieces of the broader economy. The chart establishes a fact about VCDB itself, not about the threat landscape: a handful of industries account for the bulk of what the public record actually contains. The next question is *why* those industries appear so prominently.
+
+<br><br>
+
+## Do those industries also tend to have reporting obligations?
+
+The industries dominating VCDB are not arbitrary. With one or two exceptions, they are the industries that operate under broad federal disclosure mandates -- HIPAA in healthcare, GLBA in finance, FERPA in education, and FISMA / CIRCIA in public-sector federal agencies. No equivalent federal mandate applies as broadly to agriculture, mining, construction, manufacturing, or most retail and services sectors. To make this overlap visible, I recode each industry by its disclosure regime and re-plot the same counts.
+
+<br>
 
 ```{r}
+#| fig-width: 10
+#| fig-height: 5.5
+#| fig-align: center
 
+# VIZ 2 -- VCDB COUNTS BY DISCLOSURE REGIME
 
+reporting_status <- tribble( # [2]
+  ~victim.industry.name,  ~regime,
+  "Healthcare",           "Mandatory federal reporting",
+  "Finance",              "Mandatory federal reporting",
+  "Educational",          "Mandatory federal reporting",
+  "Public",               "Mandatory federal reporting",
+  "Utilities",            "Limited / sector-specific",
+  "Transportation",       "Limited / sector-specific",
+  "Information",          "Limited / sector-specific",
+  "Agriculture",          "No broad federal mandate",
+  "Manufacturing",        "No broad federal mandate",
+  "Mining",               "No broad federal mandate",
+  "Construction",         "No broad federal mandate",
+  "Real Estate",          "No broad federal mandate",
+  "Entertainment",        "No broad federal mandate",
+  "Retail",               "No broad federal mandate",
+  "Professional",         "No broad federal mandate",
+  "Other Services",       "No broad federal mandate",
+  "Management",           "No broad federal mandate",
+  "Administrative",       "No broad federal mandate",
+  "Accommodation",        "No broad federal mandate",
+  "Trade",                "No broad federal mandate"
+)
 
-
+vcdb |>
+  filter(!is.na(victim.industry.name),
+         str_trim(victim.industry.name) != "Unknown") |> # [1]
+  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
+         victim.industry.name = recode(victim.industry.name,
+                                       "Accomodation" = "Accommodation")) |>
+  count(victim.industry.name, name = "n") |>
+  left_join(reporting_status, by = "victim.industry.name") |>
+  replace_na(list(regime = "No broad federal mandate")) |> # [3]
+  mutate(regime = factor(regime,
+                         levels = c("Mandatory federal reporting",
+                                    "Limited / sector-specific",
+                                    "No broad federal mandate")),
+         victim.industry.name = fct_reorder(victim.industry.name, n)) |>
+  ggplot(aes(x = victim.industry.name, y = n, fill = regime)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = c("Mandatory federal reporting" = "#278AE6",
+                               "Limited / sector-specific"   = "#78BBF2",
+                               "No broad federal mandate"    = "#D6D6D6"),
+                    name = "Disclosure regime") +
+  labs(title = "VCDB Counts Appear to Reflect Reporting Obligations",
+       subtitle = "Total records by industry, colored by federal disclosure regime",
+       x = NULL,
+       y = "Number of VCDB records",
+       caption = "Source: VCDB. Regime groupings: HIPAA (Healthcare), GLBA (Finance), FERPA (Educational), FISMA / CIRCIA (Public).") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
+        axis.title = element_text(size = 13),
+        axis.text = element_text(size = 11),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 11))
 ```
 
+<br>
+
+> The four highest-count industries -- Healthcare, Public, Educational, and Finance -- all sit under broad federal disclosure mandates. Industries with no broad federal mandate cluster toward the bottom of the chart. The pattern is consistent enough that VCDB counts appear to reflect reporting obligations as well as actual attack activity. This does not mean low-count sectors are necessarily attacked less. It means the public record is shaped, in part, by the legal architecture that determines who has to disclose and who does not.
+
+The lookup table here is a constructed grouping rather than an authoritative legal classification. Federal cyber disclosure law is fragmented across statutes and agencies, and many sectors face state-level breach notification requirements that this grouping does not capture. The table is meant to make a directional argument about visibility -- not to substitute for a full legal analysis.
+
+<br><br>
+
+## Which industries show higher shares of nation-state or state-affiliated activity?
+
+If VCDB counts mapped cleanly to attack frequency, the most-targeted sectors should also be the most prominent in the public record. The actor-type breakdown puts pressure on that assumption. I focus specifically on nation-state and state-affiliated activity here because Chapter 1 is about *strategic* visibility -- which sectors attract sophisticated, state-aligned adversaries -- rather than a full breakdown of every actor type. For each industry, I compute the share of *external-actor* incidents attributed to nation-state or state-affiliated adversaries; the denominator is the count of external-actor incidents within that industry, not the industry's full record count. Industries with very few external-actor incidents are dropped from this view because their proportions become unstable, and the share itself can mislead.
+
+<br>
+
+```{r}
+#| fig-width: 10
+#| fig-height: 5.5
+#| fig-align: center
+
+# VIZ 3 -- STATE-LINKED ACTOR SHARE BY INDUSTRY
+
+vcdb_actor <- vcdb |>
+  filter(actor.External == TRUE,
+         !is.na(victim.industry.name),
+         str_trim(victim.industry.name) != "Unknown") |> # [1]
+  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
+         victim.industry.name = recode(victim.industry.name,
+                                       "Accomodation" = "Accommodation"),
+         actor_type = case_when(`actor.external.variety.Nation-state`     == TRUE ~ "Nation-state",
+                                `actor.external.variety.State-affiliated` == TRUE ~ "State-affiliated",
+                                `actor.external.variety.Organized crime`  == TRUE ~ "Organized crime",
+                                `actor.external.variety.Activist`         == TRUE ~ "Activist",
+                                `actor.external.variety.Unaffiliated`     == TRUE ~ "Unaffiliated",
+                                TRUE ~ "Unknown / Other")) |>
+  group_by(victim.industry.name) |>
+  mutate(n_external = n()) |>
+  ungroup() |>
+  filter(n_external >= 50,
+         actor_type != "Unknown / Other")
+
+state_share <- vcdb_actor |>
+  mutate(state_linked = actor_type %in% c("Nation-state", "State-affiliated")) |>
+  group_by(victim.industry.name, n_external) |>
+  summarise(n_state = sum(state_linked), .groups = "drop") |>
+  mutate(prop = n_state / n_external,
+         victim.industry.name = fct_reorder(victim.industry.name, prop))
+
+ggplot(state_share, aes(x = victim.industry.name, y = prop)) +
+  geom_col(fill = "#278AE6") +
+  geom_text(aes(label = paste0("n = ", n_external)), # [4]
+            hjust = -0.15, size = 3.2, color = "grey40") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::label_percent(), # [5]
+                     expand = expansion(mult = c(0, 0.18))) + # [6]
+  labs(title = "State-Linked Actor Share Is Not Highest in the Most-Reported Sectors",
+       subtitle = "Share of external-actor incidents attributed to nation-state or state-affiliated actors",
+       x = NULL,
+       y = "Share of external-actor incidents",
+       caption = "Source: VCDB. Industries with fewer than 50 external-actor incidents excluded for stability. n labels show external-actor base.") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 17, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
+        axis.title = element_text(size = 13),
+        axis.text = element_text(size = 11),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank())
+```
+
+<br>
+
+> Public sector shows the highest share of state-linked external-actor incidents in this view, which is consistent with its prominence in the public record. The more interesting cases sit lower in the count rankings: Manufacturing, Professional services, and Information all show meaningful shares of state-linked activity despite contributing far fewer total records than Healthcare or Finance. Healthcare, Educational, and Retail -- which dominate the count rankings -- have very small state-linked shares of their external-actor incidents.
+
+> The implication is not that low-count sectors are *definitely* attacked more. The denominators here are still relatively small, and the state-linked label depends on incident-level coding that may be uneven. The careful claim is that strategic risk and public record volume do not move together cleanly. Some sectors that look small in VCDB still show meaningful concentrations of sophisticated, state-aligned activity in the records that do exist -- which is consistent with the possibility that those sectors are *under-visible* rather than simply *under-attacked*.
+
+This is the central tension of Chapter 1: the volume of public breach data is shaped, in part, by who is required to disclose, and the sectors that look quiet in raw counts are not necessarily quiet in the threat environment.
+
+<br><br><br><br>
+
+# Chapter 2: The Detection Gap
+
+The reporting gap is one barrier to visibility. There is a second one. Before an incident can be reported, it has to be discovered, and discovery is uneven across industries. This chapter looks at how incidents are found and how long they remain unnoticed.
+
+## How do industries differ in internal vs. external discovery?
+
+For each industry, I compare the share of incidents discovered internally (by the organization itself) to the share discovered externally (by law enforcement, customers, vendors, researchers, or other third parties). A high external share means that, in the recorded incidents, discovery often came from outside the organization rather than from the organization itself.
+
+<br>
+
+```{r}
+#| fig-width: 10
+#| fig-height: 5.5
+#| fig-align: center
+
+# VIZ 4 -- INTERNAL VS. EXTERNAL DISCOVERY BY INDUSTRY
+
+vcdb_disc <- vcdb |>
+  filter(!is.na(victim.industry.name),
+         str_trim(victim.industry.name) != "Unknown") |> # [1]
+  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
+         victim.industry.name = recode(victim.industry.name,
+                                       "Accomodation" = "Accommodation"),
+         discovery_cat = case_when(discovery_method.Internal == TRUE ~ "Internal",
+                                   discovery_method.External == TRUE ~ "External",
+                                   TRUE ~ "Unknown")) |>
+  filter(discovery_cat != "Unknown") |>
+  group_by(victim.industry.name) |>
+  mutate(n_disc = n()) |>
+  ungroup() |>
+  filter(n_disc >= 25) |>
+  group_by(victim.industry.name, discovery_cat) |>
+  summarise(n = n(), .groups = "drop") |>
+  group_by(victim.industry.name) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup()
+
+internal_order <- vcdb_disc |>
+  filter(discovery_cat == "Internal") |>
+  select(victim.industry.name, internal_prop = prop)
+
+vcdb_disc |>
+  left_join(internal_order, by = "victim.industry.name") |>
+  mutate(victim.industry.name = fct_reorder(victim.industry.name, -internal_prop),
+         discovery_cat = factor(discovery_cat, levels = c("Internal", "External"))) |>
+  ggplot(aes(x = victim.industry.name, y = prop, fill = discovery_cat)) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = scales::label_percent()) + # [5]
+  scale_fill_manual(values = c("Internal" = "#278AE6", "External" = "#D0E9FB"),
+                    name = "Discovered by") +
+  labs(title = "Many Sectors Rely Heavily on External Discovery",
+       subtitle = "Share of incidents discovered internally vs. externally, by industry",
+       x = NULL,
+       y = "Share of incidents",
+       caption = "Source: VCDB. Industries with fewer than 25 incidents with known discovery method excluded.") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
+        axis.title = element_text(size = 13),
+        axis.text = element_text(size = 11),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 11))
+```
+
+<br>
+
+> Discovery patterns vary widely across industries. Healthcare, Real Estate, and Utilities sit toward the top, where internal discovery accounts for the largest share of incidents. Educational, Accommodation, and Information sit toward the bottom -- in those sectors, the majority of recorded incidents were caught by someone outside the organization. This does not prove that the lower-share sectors have weaker security. They could be reporting more honestly about who actually flagged the incident, or they could be subject to more third-party reporting flows. What the chart does establish is that *who finds the incident* differs systematically across industries, and that several industries lean heavily on external parties to surface their breaches.
+
+A high external-discovery share matters because external discovery tends to come later than internal discovery -- which is the next question.
+
+<br><br>
+
+## How does dwell time differ between internal and external discovery?
+
+Dwell time is the gap between when an incident begins and when it is discovered. I construct it from `timeline.discovery.value` and the corresponding unit columns, converting hours, days, weeks, months, and years into a common unit of days. Dwell time is heavily right-skewed -- most incidents are caught quickly, but a long tail of incidents is missed for months or years -- so the y-axis is plotted on a log scale.
+
+<br>
+
+```{r}
+#| fig-width: 10
+#| fig-height: 5.5
+#| fig-align: center
+
+# VIZ 5 -- DWELL TIME BY DISCOVERY METHOD
+
+vcdb |>
+  filter(!is.na(victim.industry.name),
+         str_trim(victim.industry.name) != "Unknown") |>
+  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
+         victim.industry.name = recode(victim.industry.name,
+                                       "Accomodation" = "Accommodation"),
+         dwell_days = case_when(timeline.discovery.unit.Hours  == TRUE ~ as.numeric(timeline.discovery.value) / 24,
+                                timeline.discovery.unit.Days   == TRUE ~ as.numeric(timeline.discovery.value),
+                                timeline.discovery.unit.Weeks  == TRUE ~ as.numeric(timeline.discovery.value) * 7,
+                                timeline.discovery.unit.Months == TRUE ~ as.numeric(timeline.discovery.value) * 30,
+                                timeline.discovery.unit.Years  == TRUE ~ as.numeric(timeline.discovery.value) * 365,
+                                TRUE ~ NA_real_),
+         discovery_cat = case_when(discovery_method.Internal == TRUE ~ "Internal",
+                                   discovery_method.External == TRUE ~ "External",
+                                   TRUE ~ "Unknown")) |>
+  filter(!is.na(dwell_days), dwell_days > 0, discovery_cat != "Unknown") |>
+  ggplot(aes(x = discovery_cat, y = dwell_days, fill = discovery_cat)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  scale_y_log10() +
+  scale_fill_manual(values = c("Internal" = "#278AE6", "External" = "#D0E9FB"),
+                    guide = "none") +
+  labs(title = "External Discovery Is Associated With Longer Dwell Time",
+       subtitle = "Days from incident start to discovery, by discovery method (log scale)",
+       x = "Discovery method",
+       y = "Dwell time (days, log scale)",
+       caption = "Source: VCDB. Restricted to incidents with usable discovery timing data.") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
+        axis.title = element_text(size = 13),
+        axis.text = element_text(size = 11))
+```
+
+<br>
+
+> On a log scale, the median dwell time for externally discovered incidents sits well above the median for internally discovered incidents -- the difference spans a noticeable portion of the axis, meaning typical external discoveries take orders of magnitude longer in raw days. The interpretation is that external discovery is *associated with* longer dwell time. The chart does not show that external discovery causes longer dwell time. Some of the gap may reflect selection: incidents that go undetected for a long time are also more likely to be the ones that eventually surface through outside channels. What the chart does support is the basic claim of this chapter: when an organization does not catch its own incidents, those incidents tend to remain active longer in the data we have.
+
+<br>
+
+Taken together, Chapters 1 and 2 describe two reinforcing forces. Reporting law shapes which incidents enter the public record. Detection capacity shapes whether they are noticed at all. Both push the visible portion of the threat landscape toward a particular set of sectors, and away from others.
+
+<br><br><br><br>
+
+# Conclusion
+
+Across five visualizations, a consistent picture emerges. The industries most prominently represented in VCDB tend to be industries operating under federal disclosure mandates. Several lower-volume industries show meaningful shares of state-linked external-actor incidents, suggesting that strategic risk is not concentrated in the same sectors as public record visibility. Across industries, internal versus external discovery varies widely, and externally discovered incidents are associated with substantially longer dwell times. None of these findings, on their own, establishes a causal claim about the threat landscape. Taken together, they support a more careful conclusion: VCDB is best read as a record of what gets reported, discovered, and made visible -- not as a direct measure of where attacks happen. Low public record volume in a sector should not be read as a clean signal of low strategic risk, particularly when that sector also shows meaningful state-linked activity in the records that do exist.
+
+<br>
+
+# Limitations
+
+VCDB is not a complete record of all cyber incidents. It is shaped by voluntary submission, public reporting, and legal disclosure obligations, and the central argument of this report is that those forces leave a clear fingerprint on the dataset. The reporting-regime categories used in Chapter 1 are constructed groupings based on broad federal mandates; they do not capture state-level breach notification laws, sector-specific rules, or differences in how strictly each statute is enforced. Actor-type coding may be incomplete or applied unevenly across incidents, and the actor-type case_when() rule used here assigns each incident to the highest-priority match, which slightly suppresses overlap categories. The dwell-time analysis is restricted to the subset of rows with usable discovery timing information, which is a small share of the full dataset and may be non-random. Finally, every chart in this report is observational. The analysis does not control for organization size, incident severity, year, or sector exposure, and it cannot prove causal claims about why visibility differs across industries.
+
+<br>
+
+# Future Work
+
+A number of extensions could strengthen this analysis. A redesigned regression model could predict internal discovery as a function of reporting regime, actor type, year, severity, and industry, which would let the structural deficit argument be tested formally rather than visually. A Shiny application could allow interactive exploration of industry, actor type, year, and discovery method, making the patterns more accessible to non-technical readers. Adding the CISA KEV Catalog and other public cyber incident datasets as supplementary sources would let VCDB-derived findings be cross-checked against independently maintained threat intelligence. If year-level data proves reliable enough, a temporal extension could examine whether the visible portion of the threat landscape has shifted over time. A more rigorous comparison of federal reporting obligations and state-level breach notification laws would also help refine the regime classification used here.
+
+<br>
+
+# Course Connection
+
+The visualizations in this report draw on several techniques covered in DATA/STAT 334. The horizontal bar charts in Chapter 1 use `coord_flip()` and `fct_reorder()` to handle a categorical variable with many levels and to put the analytically relevant ordering directly into the visual encoding. The disclosure-regime chart layers a manually constructed lookup table onto the same data through a left join, using color to encode the regime grouping rather than recreating the chart from scratch. The state-linked actor share chart uses `scales::label_percent()` for proportional axes and filters out industries with very small denominators to avoid presenting unstable proportions as if they were stable. Chapter 2 uses a stacked proportional bar chart for discovery method, again with `scales::label_percent()` and consistent ordering, and a log-scaled boxplot for dwell time, which is the standard approach the course recommended for heavily right-skewed quantitative data. Across both chapters, the report emphasizes the kind of careful, ethical interpretation of public data that the course foregrounded: each chart includes a clear interpretation, and where appropriate, an explicit statement of what the chart cannot prove.
+
+<br>
+
+# New Functions / External Help Notes
+
+A few functions in this analysis were not introduced earlier in the course and are worth flagging.
+
+-  `str_trim()` is used throughout the data-cleaning steps because the raw industry names contain trailing whitespace. Removing that whitespace before grouping and joining prevents the same industry from being treated as two different text values [1].
+
+- `tribble()` is used in Chapter 1 to hand-build the `reporting_status` lookup table that maps each industry to a federal disclosure regime [2].
+
+- `replace_na()` is used after the `left_join()` in the disclosure-regime chart to make sure any industry not listed in the lookup table still receives a regime label rather than showing up as `NA` [3].
+
+- `geom_text()` is used in the state-linked actor chart to add the external-actor denominator labels beside each bar, making the sample size behind each percentage visible [4].
+
+- `scales::label_percent()` is used on proportional axes so that shares display as percentages instead of decimals [5].
+
+- `expansion()` is used in the state-linked actor chart to add extra space at the end of the axis so the `n = ...` labels do not collide with the plotting boundary [6].
+
+<br><br>
+
+# Citations
+
+[1] Z. Bobbitt, “How to Use str_trim in R (With Examples),” Statology, Jul. 14, 2022. https://www.statology.org/str_trim-in-r/
+
+[2] H. Wickham and G. Grolemund, “10 Tibbles,” R for Data Science. https://r4ds.had.co.nz/tibbles.html
+
+[3] Z. Bobbitt, “How to Use the replace_na Function in R,” Statology, Apr. 25, 2024. https://www.statology.org/r-replace_na/
+
+[4] C. Scherer, “A Quick How-to on Labelling Bar Graphs in ggplot2,” Jul. 05, 2021. https://www.cedricscherer.com/2021/07/05/a-quick-how-to-on-labelling-bar-graphs-in-ggplot2/
+
+[5] “Y-axis scale as percent in ggplot,” Stack Overflow, Aug. 12, 2022. https://stackoverflow.com/questions/73330919/y-axis-scale-as-percent-in-ggplot
+
+[6] C. O. Wilke, “Coordinate systems and axes,” DSC 385. https://wilkelab.org/DSC385/worksheets/coordinate-systems-axes.html
