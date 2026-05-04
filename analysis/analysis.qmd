@@ -22,7 +22,7 @@ vcdb <- read_csv("../data/vcdb.csv")
 
 # Abstract
 
-Public cybersecurity breach data is often treated as a window onto where attacks happen. This analysis pushes back on that framing. Using the VERIS Community Database (VCDB), I argue that public breach data does not simply show where cyberattacks occur — it shows where and how incidents are reported and discovered, and who the actors are. The report develops this argument across two related chapters. Chapter 1 examines a *reporting gap*: the industries that dominate VCDB are concentrated in sectors with federal disclosure obligations, while several industries with much lower counts show meaningful shares of nation-state or state-affiliated activity. Chapter 2 examines a *detection gap*: incidents must first be discovered before they can be reported, and externally discovered incidents in this dataset are associated with substantially longer dwell times. Together, the two chapters suggest that low public record volume should not be read as low strategic risk, and that visibility in breach data depends on both legal obligation and detection capacity.
+Public cybersecurity breach data is often treated as a window onto where attacks happen. This analysis pushes back on that framing. Using the VERIS Community Database (VCDB), I argue that public breach data does not simply show where cyberattacks occur — it shows where incidents are reported, discovered, and made visible. The report develops this argument across two related chapters. Chapter 1 examines a *reporting gap*: the industries that dominate VCDB are concentrated in sectors with federal disclosure obligations, while several industries with much lower counts show meaningful shares of nation-state or state-affiliated activity. Chapter 2 examines a *detection gap*: incidents must first be discovered before they can be reported, and externally discovered incidents in this dataset are associated with substantially longer dwell times. Together, the two chapters suggest that low public record volume should not be read as low strategic risk, and that visibility in breach data depends on both legal obligation and detection capacity.
 
 <br>
 
@@ -170,7 +170,7 @@ The lookup table here is a constructed grouping rather than an authoritative leg
 
 ## Which industries show higher shares of nation-state or state-affiliated activity?
 
-If VCDB counts mapped cleanly to attack frequency, the most-targeted sectors should also be the most prominent in the public record. The actor-type breakdown puts pressure on that assumption. I focus specifically on nation-state and state-affiliated activity here because Chapter 1 is about *strategic* visibility -- which sectors attract sophisticated, state-aligned adversaries -- rather than a full breakdown of every actor type. For each industry, I compute the share of *external-actor* incidents attributed to nation-state or state-affiliated adversaries; the denominator is the count of external-actor incidents within that industry, not the industry's full record count. Industries with very few external-actor incidents are dropped from this view because their proportions become unstable, and the share itself can mislead.
+If VCDB counts mapped cleanly to attack frequency, the most-targeted sectors should also be the most prominent in the public record. The actor-type breakdown puts pressure on that assumption. I focus specifically on nation-state and state-affiliated activity here because Chapter 1 is about *strategic* visibility -- which sectors attract state-linked adversaries -- rather than a full breakdown of every actor type. For each industry, I compute the share of *external-actor* incidents attributed to nation-state or state-affiliated adversaries; the denominator is the count of external-actor incidents within that industry, not the industry's full record count. Industries with very few external-actor incidents are dropped from this view because their proportions become unstable, and the share itself can mislead.
 
 <br>
 
@@ -232,7 +232,7 @@ ggplot(state_share, aes(x = victim.industry.name, y = prop)) +
 
 > Public sector shows the highest share of state-linked external-actor incidents in this view, which is consistent with its prominence in the public record. The more interesting cases sit lower in the count rankings: Manufacturing, Professional services, and Information all show meaningful shares of state-linked activity despite contributing far fewer total records than Healthcare or Finance. Healthcare, Educational, and Retail -- which dominate the count rankings -- have very small state-linked shares of their external-actor incidents.
 
-> The implication is not that low-count sectors are *definitely* attacked more. The denominators here are still relatively small, and the state-linked label depends on incident-level coding that may be uneven. The careful claim is that strategic risk and public record volume do not move together cleanly. Some sectors that look small in VCDB still show meaningful concentrations of sophisticated, state-aligned activity in the records that do exist -- which is consistent with the possibility that those sectors are *under-visible* rather than simply *under-attacked*.
+> The implication is not that low-count sectors are *definitely* attacked more. The denominators here are still relatively small, and the state-linked label depends on incident-level coding that may be uneven. The careful claim is that strategic risk and public record volume do not move together cleanly. Some sectors that look small in VCDB still show meaningful state-linked activity among the records that do exist -- which is consistent with the possibility that those sectors are *under-visible* rather than simply *under-attacked*.
 
 This is the central tension of Chapter 1: the volume of public breach data is shaped, in part, by who is required to disclose, and the sectors that look quiet in raw counts are not necessarily quiet in the threat environment.
 
@@ -365,7 +365,7 @@ vcdb |>
 
 <br>
 
-Taken together, Chapters 1 and 2 describe two reinforcing forces. Reporting law shapes which incidents enter the public record. Detection capacity shapes whether they are noticed at all. Both push the visible portion of the threat landscape toward a particular set of sectors, and away from others.
+Taken together, Chapters 1 and 2 describe two reinforcing forces. Reporting law shapes which incidents enter the public record. Detection capacity shapes whether they are noticed at all. Together, they help explain why the visible portion of the threat landscape is concentrated in some sectors more than others.
 
 <br><br><br><br>
 
@@ -383,7 +383,7 @@ VCDB is not a complete record of all cyber incidents. It is shaped by voluntary 
 
 # Future Work
 
-A number of extensions could strengthen this analysis. A redesigned regression model could predict internal discovery as a function of reporting regime, actor type, year, severity, and industry, which would let the structural deficit argument be tested formally rather than visually. A Shiny application could allow interactive exploration of industry, actor type, year, and discovery method, making the patterns more accessible to non-technical readers. Adding the CISA KEV Catalog and other public cyber incident datasets as supplementary sources would let VCDB-derived findings be cross-checked against independently maintained threat intelligence. If year-level data proves reliable enough, a temporal extension could examine whether the visible portion of the threat landscape has shifted over time. A more rigorous comparison of federal reporting obligations and state-level breach notification laws would also help refine the regime classification used here.
+A number of extensions could strengthen this analysis. A redesigned regression model could predict internal discovery as a function of reporting regime, actor type, year, severity, and industry, which would let the detection-gap argument be tested more formally rather than only through descriptive visualizations. A Shiny application could allow interactive exploration of industry, actor type, year, and discovery method, making the patterns more accessible to non-technical readers. Adding the CISA KEV Catalog and other public cyber incident datasets as supplementary sources would let VCDB-derived findings be cross-checked against independently maintained threat intelligence. If year-level data proves reliable enough, a temporal extension could examine whether the visible portion of the threat landscape has shifted over time. A more rigorous comparison of federal reporting obligations and state-level breach notification laws would also help refine the regime classification used here.
 
 <br>
 
