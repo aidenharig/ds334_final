@@ -58,13 +58,11 @@ Key variables used include:
 - external actor variety
 - discovery timeline / dwell time
 
-*The VCDB dataset used for this analysis is not included in the repository because the file exceeds GitHub’s 100 MB file-size limit. The analysis expects the file at:*
-
-`data/vcdb.csv`
+*The VCDB dataset used for this analysis is not included in the repository because the file exceeds GitHub’s 100 MB file-size limit. The analysis expects the file at:* `data/vcdb.csv`
 
 The rendered HTML report is included in `analysis/analysis.html`.
 
-[VERIS VCDB dataset zip](https://github.com/vz-risk/VCDB/blob/master/data/csv/vcdb.csv.zip)
+To download the data: [VERIS VCDB dataset zip](https://github.com/vz-risk/VCDB/blob/master/data/csv/vcdb.csv.zip)
 
 ## Methods
 
