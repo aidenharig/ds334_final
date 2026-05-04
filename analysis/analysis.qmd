@@ -1,5 +1,5 @@
 ---
-title: "The Dark Figure of Cyber Targeting"
+title: "The Visible Breach"
 subtitle: "How reporting law and detection gaps shape what public breach data can and cannot tell us"
 author: "Aiden W. Harig"
 date: "2026-05-04"
@@ -16,8 +16,8 @@ format:
 ```{r}
 # LOAD PACKAGES AND DATASET
 library(tidyverse)
+vcdb <- read_csv("data/vcdb.csv")
 
-vcdb <- read_csv("../data/vcdb.csv")
 ```
 
 # Abstract
@@ -54,30 +54,37 @@ To establish the baseline, I examine total VCDB record counts across U.S. indust
 #| fig-align: center
 
 # VIZ 1 -- TOTAL VCDB RECORDS BY INDUSTRY
+# Clean industry names, count records per industry, and plot ranked horizontally
 
 vcdb |>
   filter(!is.na(victim.industry.name),
          str_trim(victim.industry.name) != "Unknown") |> # [1]
-  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
-         victim.industry.name = recode(victim.industry.name,
-                                       "Accomodation" = "Accommodation")) |>
+  mutate(
+    victim.industry.name = str_trim(victim.industry.name), # [1]
+    victim.industry.name = recode(victim.industry.name,
+                                  "Accomodation" = "Accommodation")
+  ) |>
   count(victim.industry.name, name = "n") |>
   mutate(victim.industry.name = fct_reorder(victim.industry.name, n)) |>
   ggplot(aes(x = victim.industry.name, y = n)) +
   geom_col(fill = "#278AE6") +
   coord_flip() +
-  labs(title = "Public Record Visibility Is Concentrated in a Few Industries",
-       subtitle = "Total VCDB records by victim industry",
-       x = NULL,
-       y = "Number of VCDB records",
-       caption = "Source: VCDB") +
+  labs(
+    title    = "Public Record Visibility Is Concentrated in a Few Industries",
+    subtitle = "Total VCDB records by victim industry",
+    x        = NULL,
+    y        = "Number of VCDB records",
+    caption  = "Source: VCDB"
+  ) +
   theme_minimal() +
-  theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
-        axis.title = element_text(size = 13),
-        axis.text = element_text(size = 11),
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.x = element_blank())
+  theme(
+    plot.title         = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle      = element_text(size = 12, hjust = 0.5, color = "grey40"),
+    axis.title         = element_text(size = 13),
+    axis.text          = element_text(size = 11),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
 ```
 
 <br>
@@ -98,7 +105,9 @@ The industries dominating VCDB are not arbitrary. With one or two exceptions, th
 #| fig-align: center
 
 # VIZ 2 -- VCDB COUNTS BY DISCLOSURE REGIME
+# Join a hand-built regime lookup onto the count data and color bars by disclosure regime
 
+# Hand-built lookup table: maps each industry to its federal disclosure regime
 reporting_status <- tribble( # [2]
   ~victim.industry.name,  ~regime,
   "Healthcare",           "Mandatory federal reporting",
@@ -123,20 +132,25 @@ reporting_status <- tribble( # [2]
   "Trade",                "No broad federal mandate"
 )
 
+# Count records per industry, join regime labels, and plot
 vcdb |>
   filter(!is.na(victim.industry.name),
          str_trim(victim.industry.name) != "Unknown") |> # [1]
-  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
-         victim.industry.name = recode(victim.industry.name,
-                                       "Accomodation" = "Accommodation")) |>
+  mutate(
+    victim.industry.name = str_trim(victim.industry.name), # [1]
+    victim.industry.name = recode(victim.industry.name,
+                                  "Accomodation" = "Accommodation")
+  ) |>
   count(victim.industry.name, name = "n") |>
   left_join(reporting_status, by = "victim.industry.name") |>
   replace_na(list(regime = "No broad federal mandate")) |> # [3]
-  mutate(regime = factor(regime,
-                         levels = c("Mandatory federal reporting",
-                                    "Limited / sector-specific",
-                                    "No broad federal mandate")),
-         victim.industry.name = fct_reorder(victim.industry.name, n)) |>
+  mutate(
+    regime = factor(regime,
+                    levels = c("Mandatory federal reporting",
+                               "Limited / sector-specific",
+                               "No broad federal mandate")),
+    victim.industry.name = fct_reorder(victim.industry.name, n)
+  ) |>
   ggplot(aes(x = victim.industry.name, y = n, fill = regime)) +
   geom_col() +
   coord_flip() +
@@ -144,20 +158,24 @@ vcdb |>
                                "Limited / sector-specific"   = "#78BBF2",
                                "No broad federal mandate"    = "#D6D6D6"),
                     name = "Disclosure regime") +
-  labs(title = "VCDB Counts Appear to Reflect Reporting Obligations",
-       subtitle = "Total records by industry, colored by federal disclosure regime",
-       x = NULL,
-       y = "Number of VCDB records",
-       caption = "Source: VCDB. Regime groupings: HIPAA (Healthcare), GLBA (Finance), FERPA (Educational), FISMA / CIRCIA (Public).") +
+  labs(
+    title    = "VCDB Counts Appear to Reflect Reporting Obligations",
+    subtitle = "Total records by industry, colored by federal disclosure regime",
+    x        = NULL,
+    y        = "Number of VCDB records",
+    caption  = "Source: VCDB. Regime groupings: HIPAA (Healthcare), GLBA (Finance), FERPA (Educational), FISMA / CIRCIA (Public)."
+  ) +
   theme_minimal() +
-  theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
-        axis.title = element_text(size = 13),
-        axis.text = element_text(size = 11),
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        legend.title = element_text(size = 12),
-        legend.text = element_text(size = 11))
+  theme(
+    plot.title         = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle      = element_text(size = 12, hjust = 0.5, color = "grey40"),
+    axis.title         = element_text(size = 13),
+    axis.text          = element_text(size = 11),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    legend.title       = element_text(size = 12),
+    legend.text        = element_text(size = 11)
+  )
 ```
 
 <br>
@@ -180,33 +198,44 @@ If VCDB counts mapped cleanly to attack frequency, the most-targeted sectors sho
 #| fig-align: center
 
 # VIZ 3 -- STATE-LINKED ACTOR SHARE BY INDUSTRY
+# For each industry, compute the share of external-actor incidents tied to
+# nation-state or state-affiliated actors
 
+# Step 1: Filter to external-actor incidents and classify actor type
 vcdb_actor <- vcdb |>
   filter(actor.External == TRUE,
          !is.na(victim.industry.name),
          str_trim(victim.industry.name) != "Unknown") |> # [1]
-  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
-         victim.industry.name = recode(victim.industry.name,
-                                       "Accomodation" = "Accommodation"),
-         actor_type = case_when(`actor.external.variety.Nation-state`     == TRUE ~ "Nation-state",
-                                `actor.external.variety.State-affiliated` == TRUE ~ "State-affiliated",
-                                `actor.external.variety.Organized crime`  == TRUE ~ "Organized crime",
-                                `actor.external.variety.Activist`         == TRUE ~ "Activist",
-                                `actor.external.variety.Unaffiliated`     == TRUE ~ "Unaffiliated",
-                                TRUE ~ "Unknown / Other")) |>
+  mutate(
+    victim.industry.name = str_trim(victim.industry.name), # [1]
+    victim.industry.name = recode(victim.industry.name,
+                                  "Accomodation" = "Accommodation"),
+    actor_type = case_when(
+      `actor.external.variety.Nation-state`     == TRUE ~ "Nation-state",
+      `actor.external.variety.State-affiliated` == TRUE ~ "State-affiliated",
+      `actor.external.variety.Organized crime`  == TRUE ~ "Organized crime",
+      `actor.external.variety.Activist`         == TRUE ~ "Activist",
+      `actor.external.variety.Unaffiliated`     == TRUE ~ "Unaffiliated",
+      TRUE ~ "Unknown / Other"
+    )
+  ) |>
   group_by(victim.industry.name) |>
   mutate(n_external = n()) |>
   ungroup() |>
   filter(n_external >= 50,
          actor_type != "Unknown / Other")
 
+# Step 2: Compute the state-linked share for each industry
 state_share <- vcdb_actor |>
   mutate(state_linked = actor_type %in% c("Nation-state", "State-affiliated")) |>
   group_by(victim.industry.name, n_external) |>
   summarise(n_state = sum(state_linked), .groups = "drop") |>
-  mutate(prop = n_state / n_external,
-         victim.industry.name = fct_reorder(victim.industry.name, prop))
+  mutate(
+    prop = n_state / n_external,
+    victim.industry.name = fct_reorder(victim.industry.name, prop)
+  )
 
+# Step 3: Plot
 ggplot(state_share, aes(x = victim.industry.name, y = prop)) +
   geom_col(fill = "#278AE6") +
   geom_text(aes(label = paste0("n = ", n_external)), # [4]
@@ -214,18 +243,22 @@ ggplot(state_share, aes(x = victim.industry.name, y = prop)) +
   coord_flip() +
   scale_y_continuous(labels = scales::label_percent(), # [5]
                      expand = expansion(mult = c(0, 0.18))) + # [6]
-  labs(title = "State-Linked Actor Share Is Not Highest in the Most-Reported Sectors",
-       subtitle = "Share of external-actor incidents attributed to nation-state or state-affiliated actors",
-       x = NULL,
-       y = "Share of external-actor incidents",
-       caption = "Source: VCDB. Industries with fewer than 50 external-actor incidents excluded for stability. n labels show external-actor base.") +
+  labs(
+    title    = "State-Linked Actor Share Is Not Highest in the Most-Reported Sectors",
+    subtitle = "Share of external-actor incidents attributed to nation-state or state-affiliated actors",
+    x        = NULL,
+    y        = "Share of external-actor incidents",
+    caption  = "Source: VCDB. Industries with fewer than 50 external-actor incidents excluded for stability. n labels show external-actor base."
+  ) +
   theme_minimal() +
-  theme(plot.title = element_text(size = 17, face = "bold", hjust = 0.5),
-        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
-        axis.title = element_text(size = 13),
-        axis.text = element_text(size = 11),
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.x = element_blank())
+  theme(
+    plot.title         = element_text(size = 17, face = "bold", hjust = 0.5),
+    plot.subtitle      = element_text(size = 12, hjust = 0.5, color = "grey40"),
+    axis.title         = element_text(size = 13),
+    axis.text          = element_text(size = 11),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank()
+  )
 ```
 
 <br>
@@ -254,16 +287,23 @@ For each industry, I compare the share of incidents discovered internally (by th
 #| fig-align: center
 
 # VIZ 4 -- INTERNAL VS. EXTERNAL DISCOVERY BY INDUSTRY
+# Compare internal and external discovery shares across industries using a
+# stacked proportional bar chart
 
+# Step 1: Classify discovery method and compute proportions within each industry
 vcdb_disc <- vcdb |>
   filter(!is.na(victim.industry.name),
          str_trim(victim.industry.name) != "Unknown") |> # [1]
-  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
-         victim.industry.name = recode(victim.industry.name,
-                                       "Accomodation" = "Accommodation"),
-         discovery_cat = case_when(discovery_method.Internal == TRUE ~ "Internal",
-                                   discovery_method.External == TRUE ~ "External",
-                                   TRUE ~ "Unknown")) |>
+  mutate(
+    victim.industry.name = str_trim(victim.industry.name), # [1]
+    victim.industry.name = recode(victim.industry.name,
+                                  "Accomodation" = "Accommodation"),
+    discovery_cat = case_when(
+      discovery_method.Internal == TRUE ~ "Internal",
+      discovery_method.External == TRUE ~ "External",
+      TRUE ~ "Unknown"
+    )
+  ) |>
   filter(discovery_cat != "Unknown") |>
   group_by(victim.industry.name) |>
   mutate(n_disc = n()) |>
@@ -275,10 +315,12 @@ vcdb_disc <- vcdb |>
   mutate(prop = n / sum(n)) |>
   ungroup()
 
+# Step 2: Pull internal-discovery proportions for ordering the y-axis
 internal_order <- vcdb_disc |>
   filter(discovery_cat == "Internal") |>
   select(victim.industry.name, internal_prop = prop)
 
+# Step 3: Join ordering and plot
 vcdb_disc |>
   left_join(internal_order, by = "victim.industry.name") |>
   mutate(victim.industry.name = fct_reorder(victim.industry.name, -internal_prop),
@@ -289,20 +331,24 @@ vcdb_disc |>
   scale_y_continuous(labels = scales::label_percent()) + # [5]
   scale_fill_manual(values = c("Internal" = "#278AE6", "External" = "#D0E9FB"),
                     name = "Discovered by") +
-  labs(title = "Many Sectors Rely Heavily on External Discovery",
-       subtitle = "Share of incidents discovered internally vs. externally, by industry",
-       x = NULL,
-       y = "Share of incidents",
-       caption = "Source: VCDB. Industries with fewer than 25 incidents with known discovery method excluded.") +
+  labs(
+    title    = "Many Sectors Rely Heavily on External Discovery",
+    subtitle = "Share of incidents discovered internally vs. externally, by industry",
+    x        = NULL,
+    y        = "Share of incidents",
+    caption  = "Source: VCDB. Industries with fewer than 25 incidents with known discovery method excluded."
+  ) +
   theme_minimal() +
-  theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
-        axis.title = element_text(size = 13),
-        axis.text = element_text(size = 11),
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        legend.title = element_text(size = 12),
-        legend.text = element_text(size = 11))
+  theme(
+    plot.title         = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle      = element_text(size = 12, hjust = 0.5, color = "grey40"),
+    axis.title         = element_text(size = 13),
+    axis.text          = element_text(size = 11),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    legend.title       = element_text(size = 12),
+    legend.text        = element_text(size = 11)
+  )
 ```
 
 <br>
@@ -325,38 +371,51 @@ Dwell time is the gap between when an incident begins and when it is discovered.
 #| fig-align: center
 
 # VIZ 5 -- DWELL TIME BY DISCOVERY METHOD
+# Construct dwell time in days and compare distributions by internal vs. external discovery
 
 vcdb |>
   filter(!is.na(victim.industry.name),
          str_trim(victim.industry.name) != "Unknown") |>
-  mutate(victim.industry.name = str_trim(victim.industry.name), # [1]
-         victim.industry.name = recode(victim.industry.name,
-                                       "Accomodation" = "Accommodation"),
-         dwell_days = case_when(timeline.discovery.unit.Hours  == TRUE ~ as.numeric(timeline.discovery.value) / 24,
-                                timeline.discovery.unit.Days   == TRUE ~ as.numeric(timeline.discovery.value),
-                                timeline.discovery.unit.Weeks  == TRUE ~ as.numeric(timeline.discovery.value) * 7,
-                                timeline.discovery.unit.Months == TRUE ~ as.numeric(timeline.discovery.value) * 30,
-                                timeline.discovery.unit.Years  == TRUE ~ as.numeric(timeline.discovery.value) * 365,
-                                TRUE ~ NA_real_),
-         discovery_cat = case_when(discovery_method.Internal == TRUE ~ "Internal",
-                                   discovery_method.External == TRUE ~ "External",
-                                   TRUE ~ "Unknown")) |>
+  mutate(
+    victim.industry.name = str_trim(victim.industry.name), # [1]
+    victim.industry.name = recode(victim.industry.name,
+                                  "Accomodation" = "Accommodation"),
+    # Convert discovery timeline to a common unit of days
+    dwell_days = case_when(
+      timeline.discovery.unit.Hours  == TRUE ~ as.numeric(timeline.discovery.value) / 24,
+      timeline.discovery.unit.Days   == TRUE ~ as.numeric(timeline.discovery.value),
+      timeline.discovery.unit.Weeks  == TRUE ~ as.numeric(timeline.discovery.value) * 7,
+      timeline.discovery.unit.Months == TRUE ~ as.numeric(timeline.discovery.value) * 30,
+      timeline.discovery.unit.Years  == TRUE ~ as.numeric(timeline.discovery.value) * 365,
+      TRUE ~ NA_real_
+    ),
+    # Classify discovery method
+    discovery_cat = case_when(
+      discovery_method.Internal == TRUE ~ "Internal",
+      discovery_method.External == TRUE ~ "External",
+      TRUE ~ "Unknown"
+    )
+  ) |>
   filter(!is.na(dwell_days), dwell_days > 0, discovery_cat != "Unknown") |>
   ggplot(aes(x = discovery_cat, y = dwell_days, fill = discovery_cat)) +
   geom_boxplot(outlier.alpha = 0.2) +
   scale_y_log10() +
   scale_fill_manual(values = c("Internal" = "#278AE6", "External" = "#D0E9FB"),
                     guide = "none") +
-  labs(title = "External Discovery Is Associated With Longer Dwell Time",
-       subtitle = "Days from incident start to discovery, by discovery method (log scale)",
-       x = "Discovery method",
-       y = "Dwell time (days, log scale)",
-       caption = "Source: VCDB. Restricted to incidents with usable discovery timing data.") +
+  labs(
+    title    = "External Discovery Is Associated With Longer Dwell Time",
+    subtitle = "Days from incident start to discovery, by discovery method (log scale)",
+    x        = "Discovery method",
+    y        = "Dwell time (days, log scale)",
+    caption  = "Source: VCDB. Restricted to incidents with usable discovery timing data."
+  ) +
   theme_minimal() +
-  theme(plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-        plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
-        axis.title = element_text(size = 13),
-        axis.text = element_text(size = 11))
+  theme(
+    plot.title    = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5, color = "grey40"),
+    axis.title    = element_text(size = 13),
+    axis.text     = element_text(size = 11)
+  )
 ```
 
 <br>
@@ -411,16 +470,28 @@ A few functions in this analysis were not introduced earlier in the course and a
 
 <br><br>
 
+# AI Appendex
+
+## Source Code Organization
+
+**Paraphrased prompt:** *The prompt is paraphrased because the original working instructions were extensive.*
+I asked AI to review my completed `analysis.qmd` file and improve the organization/readability of the source code only. I emphasized that the analysis was already complete and that no changes should be made to the argument, calculations, variables, chart outputs, citations, data path or overall rendered report. The goal was only to make the Quarto source easier to read for someone opening the file directly.
+
+**What I incorporated:**  
+I incorporated organizational changes to the source code, including clearer spacing between sections, more readable code chunk structure, short explanatory comments before major code blocks, and cleaner formatting within longer pipelines. These edits were intended to make the source file easier to follow without changing the analysis or final report output.
+
+<br><br>
+
 # Citations
 
-[1] Z. Bobbitt, “How to Use str_trim in R (With Examples),” Statology, Jul. 14, 2022. https://www.statology.org/str_trim-in-r/
+[1] Z. Bobbitt, "How to Use str_trim in R (With Examples)," Statology, Jul. 14, 2022. https://www.statology.org/str_trim-in-r/
 
-[2] H. Wickham and G. Grolemund, “10 Tibbles,” R for Data Science. https://r4ds.had.co.nz/tibbles.html
+[2] H. Wickham and G. Grolemund, "10 Tibbles," R for Data Science. https://r4ds.had.co.nz/tibbles.html
 
-[3] Z. Bobbitt, “How to Use the replace_na Function in R,” Statology, Apr. 25, 2024. https://www.statology.org/r-replace_na/
+[3] Z. Bobbitt, "How to Use the replace_na Function in R," Statology, Apr. 25, 2024. https://www.statology.org/r-replace_na/
 
-[4] C. Scherer, “A Quick How-to on Labelling Bar Graphs in ggplot2,” Jul. 05, 2021. https://www.cedricscherer.com/2021/07/05/a-quick-how-to-on-labelling-bar-graphs-in-ggplot2/
+[4] C. Scherer, "A Quick How-to on Labelling Bar Graphs in ggplot2," Jul. 05, 2021. https://www.cedricscherer.com/2021/07/05/a-quick-how-to-on-labelling-bar-graphs-in-ggplot2/
 
-[5] “Y-axis scale as percent in ggplot,” Stack Overflow, Aug. 12, 2022. https://stackoverflow.com/questions/73330919/y-axis-scale-as-percent-in-ggplot
+[5] "Y-axis scale as percent in ggplot," Stack Overflow, Aug. 12, 2022. https://stackoverflow.com/questions/73330919/y-axis-scale-as-percent-in-ggplot
 
-[6] C. O. Wilke, “Coordinate systems and axes,” DSC 385. https://wilkelab.org/DSC385/worksheets/coordinate-systems-axes.html
+[6] C. O. Wilke, "Coordinate systems and axes," DSC 385. https://wilkelab.org/DSC385/worksheets/coordinate-systems-axes.html
