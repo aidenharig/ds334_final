@@ -16,19 +16,19 @@ format:
 ```{r}
 # LOAD PACKAGES AND DATASET
 library(tidyverse)
-vcdb <- read_csv("data/vcdb.csv")
+vcdb <- read_csv("../data/vcdb.csv")
 
 ```
 
 # Abstract
 
-Public cybersecurity breach data is often treated as a window onto where attacks happen. This analysis pushes back on that framing. Using the VERIS Community Database (VCDB), I argue that public breach data does not simply show where cyberattacks occur — it shows where incidents are reported, discovered, and made visible. The report develops this argument across two related chapters. Chapter 1 examines a *reporting gap*: the industries that dominate VCDB are concentrated in sectors with federal disclosure obligations, while several industries with much lower counts show meaningful shares of nation-state or state-affiliated activity. Chapter 2 examines a *detection gap*: incidents must first be discovered before they can be reported, and externally discovered incidents in this dataset are associated with substantially longer dwell times. Together, the two chapters suggest that low public record volume should not be read as low strategic risk, and that visibility in breach data depends on both legal obligation and detection capacity.
+Public cybersecurity breach data is often treated as a window onto where attacks happen. This analysis pushes back on that framing. Using the VERIS Community Database (VCDB), I argue that public breach data does not simply show where cyberattacks occur -- it shows where incidents are reported, discovered, and made visible. The report develops this argument across two related chapters. Chapter 1 examines a *reporting gap*: the industries that dominate VCDB are concentrated in sectors with federal disclosure obligations, while several industries with much lower counts show meaningful shares of nation-state or state-affiliated activity. Chapter 2 examines a *detection gap*: incidents must first be discovered before they can be reported, and externally discovered incidents in this dataset are associated with substantially longer dwell times. Together, the two chapters suggest that low public record volume should not be read as low strategic risk, and that visibility in breach data depends on both legal obligation and detection capacity.
 
 <br>
 
 # Introduction
 
-When a hospital suffers a ransomware attack, federal law requires it to notify patients, regulators, and the public within a defined window. When a grain cooperative suffers the same attack, no equivalent federal obligation exists. That asymmetry is not a minor footnote in U.S. cybersecurity policy — it is a structural feature of how breach information enters the public record, and it has consequences for any analyst working with public breach data.
+When a hospital suffers a ransomware attack, federal law requires it to notify patients, regulators, and the public within a defined window. When a grain cooperative suffers the same attack, no equivalent federal obligation exists. That asymmetry is not a minor footnote in U.S. cybersecurity policy -- it is a structural feature of how breach information enters the public record, and it has consequences for any analyst working with public breach data.
 
 This report uses the **VERIS Community Database (VCDB)**, a publicly available repository of cybersecurity incidents maintained by the VERIS Community and contributed to by organizations, researchers, and security teams. VCDB applies the Vocabulary for Event Recording and Incident Sharing (VERIS) framework to standardize incident documentation across sectors. The dataset includes **10,586 observations**, each representing a single reported cybersecurity incident.
 
